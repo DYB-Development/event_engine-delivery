@@ -2,12 +2,11 @@ require "test_helper"
 
 module EventEngine
   class DefinitionTransportCheckTest < ActiveSupport::TestCase
-    def registry_with_process_type(process_type)
+    def registry_for_sale_processed
       schema = EventDefinition::Schema.new(
         event_name: :sale_processed,
         event_version: 1,
         event_type: :domain,
-        process_type: process_type,
         required_inputs: [],
         optional_inputs: [],
         payload_fields: []
@@ -22,20 +21,37 @@ module EventEngine
       registry
     end
 
-    def capture_log(registry:, transport:)
+    def rules_making_it(process_type)
+      ProcessingRules.new(events: { sale_processed: process_type })
+    end
+
+    def capture_log(registry:, transport:, processing_rules:)
       io = StringIO.new
-      DefinitionTransportCheck.run(registry: registry, transport: transport, logger: Logger.new(io))
+      DefinitionTransportCheck.run(
+        registry: registry,
+        transport: transport,
+        logger: Logger.new(io),
+        processing_rules: processing_rules
+      )
       io.string
     end
 
     test "warns when a :broker event has no real transport configured" do
-      output = capture_log(registry: registry_with_process_type(:broker), transport: Transports::NullTransport.new)
+      output = capture_log(
+        registry: registry_for_sale_processed,
+        transport: Transports::NullTransport.new,
+        processing_rules: rules_making_it(:broker)
+      )
 
       assert_match(/sale_processed/, output)
     end
 
     test "stays silent when a real transport is configured" do
-      output = capture_log(registry: registry_with_process_type(:broker), transport: Transports::InMemoryTransport.new)
+      output = capture_log(
+        registry: registry_for_sale_processed,
+        transport: Transports::InMemoryTransport.new,
+        processing_rules: rules_making_it(:broker)
+      )
 
       assert_equal "", output
     end

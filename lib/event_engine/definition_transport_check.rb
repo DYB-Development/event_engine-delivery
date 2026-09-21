@@ -8,11 +8,12 @@ module EventEngine
     # @param registry [SchemaRegistry] the loaded registry
     # @param transport [#publish, nil] the configured transport
     # @param logger [Logger] where to write the warning
+    # @param processing_rules [ProcessingRules] what decides an event's process type
     # @return [void]
-    def self.run(registry:, transport:, logger:)
+    def self.run(registry:, transport:, logger:, processing_rules: EventEngine.processing_rules)
       return if real_transport?(transport)
 
-      broker = registry.events.select { |name| registry.schema(name).process_type == :broker }
+      broker = registry.events.select { |name| broker?(registry.schema(name), processing_rules) }
       return if broker.empty?
 
       logger.warn(
@@ -20,6 +21,11 @@ module EventEngine
         "#{broker.join(', ')}. They will raise when published. Set config.transport."
       )
     end
+
+    def self.broker?(schema, processing_rules)
+      processing_rules.for(event_name: schema.event_name, pack: schema.domain) == :broker
+    end
+    private_class_method :broker?
 
     def self.real_transport?(transport)
       !transport.nil? && !(transport.respond_to?(:null?) && transport.null?)
