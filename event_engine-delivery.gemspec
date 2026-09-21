@@ -28,4 +28,9 @@ Gem::Specification.new do |spec|
   spec.add_dependency "event_engine"
   spec.add_dependency "event_engine-subscribers"
   spec.add_dependency "event_engine-event_definition"
+
+  # json 3 dropped the second argument ActiveSupport::JSON.decode passes it, so
+  # every read of a json column raises until Rails ships a release that calls
+  # the new interface.
+  spec.add_dependency "json", "< 3"
 end
