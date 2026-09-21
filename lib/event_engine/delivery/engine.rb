@@ -5,7 +5,7 @@ module EventEngine
 
       initializer "event_engine.delivery.register_handler" do
         config.after_initialize do
-          EventEngine.register_handler(Handler.new, levels: :all)
+          EventEngine.register_handler(Handler.new, process_types: :all)
           Engine.send(:start_cloud_reporter!)
         end
       end
