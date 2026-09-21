@@ -13,7 +13,7 @@ class BootTransportWarningTest < ActiveSupport::TestCase
 
   test "boot warns when a :broker event has no real transport" do
     schema_file = Tempfile.new([ "event_schema", ".json" ])
-    schema_file.write(JSON.generate([ SaleProcessed.schema.to_h ]))
+    schema_file.write(JSON.generate([ SaleProcessed.schema.to_h.merge(event_version: 1) ]))
     schema_file.flush
 
     original = EventEngine::Delivery.configuration.instance_variable_get(:@logger)

@@ -38,7 +38,7 @@ class EventEngineSmokeTest < ActiveSupport::TestCase
     end
 
     schema_file = Tempfile.new([ "event_schema", ".json" ])
-    schema_file.write(JSON.generate([ CowFed.schema.to_h ]))
+    schema_file.write(JSON.generate([ CowFed.schema.to_h.merge(event_version: 1) ]))
     schema_file.flush
 
     # Boot engine from schema file
