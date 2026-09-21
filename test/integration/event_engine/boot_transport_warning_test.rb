@@ -1,19 +1,20 @@
 require "test_helper"
 require "tempfile"
+require "json"
 
 class BootTransportWarningTest < ActiveSupport::TestCase
   class SaleProcessed < EventEngine::EventDefinition
     event_name :sale_processed
     event_type :domain
-    process_type :broker
 
     input :sale
     required_payload :total, from: :sale, attr: :total
   end
 
   test "boot warns when a :broker event has no real transport" do
-    schema_file = Tempfile.new("event_schema.rb")
-    EventEngine::EventSchemaDumper.dump!(definitions: [SaleProcessed], path: schema_file.path)
+    schema_file = Tempfile.new([ "event_schema", ".json" ])
+    schema_file.write(JSON.generate([ SaleProcessed.schema.to_h ]))
+    schema_file.flush
 
     original = EventEngine::Delivery.configuration.instance_variable_get(:@logger)
     original_transport = EventEngine::Delivery.configuration.transport
@@ -31,7 +32,8 @@ class BootTransportWarningTest < ActiveSupport::TestCase
     EventEngine::DefinitionTransportCheck.run(
       registry: registry,
       transport: EventEngine::Delivery.configuration.transport,
-      logger: EventEngine::Delivery.configuration.logger
+      logger: EventEngine::Delivery.configuration.logger,
+      processing_rules: EventEngine::ProcessingRules.new(events: { sale_processed: :broker })
     )
 
     assert_match(/sale_processed/, io.string)

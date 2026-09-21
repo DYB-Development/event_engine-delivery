@@ -1,5 +1,6 @@
 require "test_helper"
 require "tempfile"
+require "json"
 
 class EventEngineSmokeTest < ActiveSupport::TestCase
   self.use_transactional_tests = false
@@ -36,13 +37,9 @@ class EventEngineSmokeTest < ActiveSupport::TestCase
       c.max_attempts = 5
     end
 
-    schema_file = Tempfile.new("event_schema.rb")
-
-    # Dump schema from DSL
-    EventEngine::EventSchemaDumper.dump!(
-      definitions: [CowFed],
-      path: schema_file.path
-    )
+    schema_file = Tempfile.new([ "event_schema", ".json" ])
+    schema_file.write(JSON.generate([ CowFed.schema.to_h ]))
+    schema_file.flush
 
     # Boot engine from schema file
     EventEngine.boot_from_schema!(
@@ -54,7 +51,7 @@ class EventEngineSmokeTest < ActiveSupport::TestCase
 
     # --- Act -----------------------------------------------------------------
 
-    EventEngine.cow_fed(cow: cow)
+    EventEngine.emit(:cow_fed, inputs: { cow: cow })
 
     # Inline delivery should have drained immediately
     outbox = EventEngine::OutboxEvent.last
