@@ -1,0 +1,28 @@
+scope: delivering durable and broker events — writing them to the transactional outbox, publishing them through a transport, and retrying or dead-lettering the ones that fail
+
+install:
+  - bin/rails event_engine_delivery:install:migrations
+  - EventEngine::Delivery.configure
+  - EventEngine::Transports::Kafka
+  - EventEngine::KafkaProducer
+
+develop:
+  - EventEngine::Transports::InMemoryTransport
+  - EventEngine::PublishOutboxEventsJob
+  - EventEngine::OutboxCleanupJob
+  - bin/rails event_engine:outbox:cleanup
+  - bin/rails event_engine:dead_letters:list
+  - bin/rails event_engine:dead_letters:retry
+  - bin/rails event_engine:dead_letters:retry:all
+
+sources:
+  - lib/event_engine/delivery.rb
+  - lib/event_engine/delivery/configuration.rb
+  - lib/event_engine/delivery/handler.rb
+  - lib/event_engine/transports/kafka.rb
+  - lib/event_engine/kafka_producer.rb
+  - lib/event_engine/transports/in_memory_transport.rb
+  - app/jobs/event_engine/publish_outbox_events_job.rb
+  - app/jobs/event_engine/outbox_cleanup_job.rb
+  - lib/tasks/event_engine_outbox.rake
+  - lib/tasks/event_engine_dead_letters.rake
