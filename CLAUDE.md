@@ -1,16 +1,3 @@
-<!-- the_local:begin -->
-## Delegate to your locals
-
-This project has installed expert subagents. Before doing work yourself,
-check whether a local owns it and delegate — never work from memory on
-something a local covers:
-
-- event_engine-subscribers-* agents
-- the_local-* agents
-
-See each agent's description for specifics.
-<!-- the_local:end -->
-
 <!-- the_local:process:begin -->
 Read and follow this develop process for all work in this project. It is
 also written verbatim to `develop_process_rules.md` — reference that file directly.
