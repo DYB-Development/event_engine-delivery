@@ -17,15 +17,8 @@ module EventEngine
         })
 
         Delivery.enqueue do
-          transport = Delivery.configuration.transport
-          unless transport
-            Rails.logger.warn("[EventEngine::Delivery] No transport configured — event written to outbox but not published. " \
-              "Set config.transport in your EventEngine::Delivery initializer to enable publishing.")
-            next
-          end
-
           OutboxPublisher.new(
-            router: OutboxRouter.new(transport: transport),
+            router: OutboxRouter.new(transport: Delivery.configuration.transport),
             batch_size: Delivery.configuration.batch_size
           ).call
         end
