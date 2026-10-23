@@ -3,9 +3,10 @@ module EventEngine
     class Engine < ::Rails::Engine
       engine_name "event_engine_delivery"
 
-      initializer "event_engine.delivery.register_handler" do
+      initializer "event_engine.delivery.register_processor" do
         config.after_initialize do
-          EventEngine.register_handler(Handler.new, process_types: :all)
+          processor = Processor.new
+          Processor::PROCESS_TYPES.each { |process_type| EventEngine.register_processor(process_type, processor) }
           Engine.send(:start_cloud_reporter!)
         end
       end

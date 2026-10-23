@@ -1,24 +1,9 @@
 module EventEngine
   module Delivery
-    # The delivery handler registered with EventEngine core. Receives a built
-    # Event and handles only durable/broker events: it writes them to the outbox
-    # and publishes them. :inline and :background events are run by
-    # event_engine-subscribers, not here.
-    class Handler
+    class Processor
+      PROCESS_TYPES = %i[durable broker].freeze
+
       def call(event)
-        case process_type_for(event)
-        when :inline, :background then nil # run by event_engine-subscribers
-        else write_and_publish(event)
-        end
-      end
-
-      private
-
-      def process_type_for(event)
-        event.process_type&.to_sym
-      end
-
-      def write_and_publish(event)
         outbox_event = OutboxWriter.write(event.to_h)
 
         ActiveSupport::Notifications.instrument("event_engine.event_emitted", {
