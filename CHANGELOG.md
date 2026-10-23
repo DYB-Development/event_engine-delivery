@@ -6,6 +6,12 @@ All notable changes to this project are documented here, following
 
 ## [Unreleased]
 
+### Changed
+- Delivery registers itself as the processor for the `durable` and `broker` process
+  types, in place of a handler registered for every event. An event reaches the
+  outbox only when the host's rules route it to `durable` or `broker`.
+- A `durable` event is delivered to its subscribers when no transport is configured.
+
 ### Added
 - Initial gem scaffold: mountable `EventEngine::Delivery` Rails engine depending on
   `event_engine`.

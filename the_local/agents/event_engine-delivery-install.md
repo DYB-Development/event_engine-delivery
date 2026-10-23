@@ -98,8 +98,10 @@ app emits events that must not be lost or must leave the app through a broker.
 
 ## Conventions
 
-- The gem registers itself with EventEngine when the app boots. No routes, mount
-  or handler registration goes in the host.
+- The gem registers itself with EventEngine as the processor for `durable` and
+  `broker` when the app boots. No routes, mount or processor registration goes in
+  the host, and only events the host's rules route to `durable` or `broker` reach
+  the outbox.
 - Without a real transport, a `broker` event is still written to the outbox, and
   publishing it raises. `durable` events need no transport.
 - When the gem is upgraded, run `bin/rails event_engine_delivery:install:migrations`

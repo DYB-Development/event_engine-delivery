@@ -7,6 +7,7 @@ class EventEngineSmokeTest < ActiveSupport::TestCase
 
   teardown do
     EventEngine::OutboxEvent.delete_all
+    EventEngine.processing_rules = nil
   end
 
   class Cow
@@ -46,6 +47,8 @@ class EventEngineSmokeTest < ActiveSupport::TestCase
       schema_path: schema_file.path,
       registry: EventEngine::SchemaRegistry.new
     )
+
+    EventEngine.processing_rules = EventEngine::ProcessingRules.new(events: { cow_fed: :broker })
 
     cow = Cow.new(weight: 1200)
 
