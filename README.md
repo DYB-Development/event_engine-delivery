@@ -4,7 +4,7 @@ The **delivery layer** for [EventEngine](https://github.com/tylercschneider/even
 
 `event_engine` (the core) declares events with a schema-first DSL, compiles them to
 a committed schema, and **dispatches** built events to registered handlers. It does
-not deliver anything on its own. `event_engine-delivery` is the handler that takes an
+not deliver anything on its own. `event_engine-delivery` is the processor that takes an
 emitted event and **gets it delivered reliably**:
 
 - the durability **level ladder** (1 sync → 2 job → 3 outbox → 4 broker),
@@ -21,7 +21,7 @@ when you need durable, reliable delivery.
 > via copy-then-subtract. Most of its classes still live under the top-level
 > `EventEngine::` namespace (e.g. `EventEngine::Transports::Kafka`,
 > `EventEngine::OutboxEvent`, `EventEngine::OutboxPublisher`). The delivery-specific
-> entry points are `EventEngine::Delivery` (config, engine, handler). The examples
+> entry points are `EventEngine::Delivery` (config, engine, processor). The examples
 > below use the namespaces as they exist today.
 
 ---
@@ -87,54 +87,37 @@ end
 
 ## How it hooks into the core
 
-At Rails boot, the delivery engine registers a single handler with the core, for all
-levels:
+At Rails boot, the delivery engine registers itself with the core as the processor
+for the `durable` and `broker` process types:
 
 ```ruby
 # lib/event_engine/delivery/engine.rb
-initializer "event_engine.delivery.register_handler" do
+initializer "event_engine.delivery.register_processor" do
   config.after_initialize do
-    EventEngine.register_handler(Handler.new, levels: :all)
+    processor = Processor.new
+    Processor::PROCESS_TYPES.each { |process_type| EventEngine.register_processor(process_type, processor) }
     Engine.send(:start_cloud_reporter!)
   end
 end
 ```
 
-From then on, every `EventEngine.<event>` call dispatches into
-`EventEngine::Delivery::Handler#call`, which routes by `event_level`.
+The host's rules file decides which events take those roads, for example
+`quote_signed: durable`. `inline` and `background` events are processed by
+`event_engine-subscribers` and never reach this gem.
 
 ---
 
-## Level routing
+## Process type routing
 
-`EventEngine::Delivery::Handler` is the brain. It maps each event's level to a
-delivery strategy:
+`EventEngine::Delivery::Processor#call` writes the event to the outbox, fires
+`event_engine.event_emitted`, and triggers publishing per the configured
+[delivery adapter](#delivery-adapters). When the outbox drains,
+`EventEngine::OutboxRouter` routes by process type:
 
-```ruby
-def call(event)
-  case event.event_level
-  when 1 then dispatch_synchronously(event)  # invoke subscribers now, in-process
-  when 2 then dispatch_in_background(event)  # enqueue DispatchSubscribersJob
-  else        write_and_publish(event)       # 3, 4, and nil → outbox + publish
-  end
-end
-```
-
-- **Level 1** — calls every `EventEngine::Subscriber` registered for the event,
-  synchronously, in the caller's stack.
-- **Level 2** — enqueues `DispatchSubscribersJob`, which invokes the same subscribers
-  in a background job.
-- **Levels 3+ (and `nil`)** — writes an `OutboxEvent` row, fires
-  `event_engine.event_emitted`, and triggers publishing per the configured
-  [delivery adapter](#delivery-adapters). When the outbox drains,
-  `EventEngine::OutboxRouter` differentiates:
-  - **level 3** → invoke in-app subscribers,
-  - **level 4** → publish to the configured **transport** (raises
-    `MissingTransportError` if none/Null),
-  - **level 5** → raises `UnsupportedLevelError` (reserved, unsupported).
-
-> **`nil` levels fall into the outbox path** (the `else` branch). If you didn't set
-> `event_level` on a definition, its events behave like level 3+. Set it explicitly.
+- **durable** → invokes the event's in-app subscribers. No transport is needed.
+- **broker** → publishes to the configured **transport**, raising
+  `MissingTransportError` if none is configured.
+- **sourced** → raises `UnsupportedProcessTypeError`.
 
 ---
 
@@ -470,9 +453,9 @@ app.
 
 ## Customization recipes
 
-**Run delivery and a durable log together.** Add `event_engine-store`. Both register
-handlers at `levels: :all`; every event is delivered *and* recorded. Order is the
-registration order at boot.
+**Run delivery and a durable log together.** Add `event_engine-store`. Delivery
+processes `durable` and `broker` events, and the store's handlers record every
+event whatever its process type.
 
 **Pause delivery during maintenance.** Set `delivery_adapter = :manual`; events keep
 landing in the outbox safely and you drain them with `OutboxPublisher` when ready.
